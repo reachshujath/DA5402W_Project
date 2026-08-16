@@ -5,7 +5,7 @@ description = "End-to-end MLOps demo for real-time credit card fraud detection."
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = "--basetemp=.pytest-tmp"
 
