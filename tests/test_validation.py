@@ -29,3 +29,9 @@ def test_validate_prediction_payload_returns_float_record():
     assert set(record) == set(FEATURE_COLUMNS)
     assert all(isinstance(value, float) for value in record.values())
 
+
+def test_validate_prediction_payload_rejects_non_finite_value():
+    payload = {column: 1 for column in FEATURE_COLUMNS}
+    payload["V1"] = float("inf")
+    with pytest.raises(ValidationError, match="finite"):
+        validate_prediction_payload(payload)

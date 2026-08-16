@@ -1,0 +1,85 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python -m fraud_mlops.training.train --no-mlflow
+    deps:
+    - path: creditcard.csv
+      hash: md5
+      md5: e90efcb83d69faf99fcab8b0255024de
+      size: 150828752
+    - path: params.yaml
+      hash: md5
+      md5: bedde92e3bc8d85988e33e8c11c0fd21
+      size: 352
+    - path: src/fraud_mlops/config.py
+      hash: md5
+      md5: 6d8ea4b5161836990dc1d4d19aef2a56
+      size: 620
+    - path: src/fraud_mlops/preprocessing.py
+      hash: md5
+      md5: 4b722cb1a671ab2b72714b31b6ac65ba
+      size: 866
+    - path: src/fraud_mlops/training/train.py
+      hash: md5
+      md5: 5dd444a9667dccd69e5805b565a82315
+      size: 12621
+    - path: src/fraud_mlops/validation/schema.py
+      hash: md5
+      md5: 7396e7748b9ff399ba58736898bc09a7
+      size: 2130
+    params:
+      params.yaml:
+        train:
+          test_size: 0.2
+          validation_size: 0.2
+          random_state: 42
+          threshold_min: 0.05
+          threshold_max: 0.95
+          threshold_steps: 181
+          promotion:
+            min_recall: 0.8
+            min_precision: 0.2
+          logistic_regression:
+            class_weight: balanced
+            max_iter: 1000
+          random_forest:
+            class_weight: balanced_subsample
+            n_estimators: 200
+            max_depth: 12
+    outs:
+    - path: data/processed/x_test.csv
+      hash: md5
+      md5: 94e9ef6a1382022969f2d6e94e599236
+      size: 30105251
+    - path: data/processed/x_train.csv
+      hash: md5
+      md5: 66d8380401db807ac99f2fdf707a0119
+      size: 96342431
+    - path: data/processed/x_validation.csv
+      hash: md5
+      md5: 25f51f68390d631ff857ed0bbbd60fb2
+      size: 24085335
+    - path: data/processed/y_test.csv
+      hash: md5
+      md5: 139122f285f3641a4e93d0993fc00bc0
+      size: 170893
+    - path: data/processed/y_train.csv
+      hash: md5
+      md5: 19731fb7395695a49134b81ae7ad488a
+      size: 546835
+    - path: data/processed/y_validation.csv
+      hash: md5
+      md5: a336cabb672dad8127c93506d66a9ebc
+      size: 136714
+    - path: models/fraud_model.joblib
+      hash: md5
+      md5: 46fe1f94d96a0d9ed34fbf381d699eb5
+      size: 3827086
+    - path: reports/metrics.json
+      hash: md5
+      md5: fbc546fd6639858d7b8c90ecf17da314
+      size: 2286
+    - path: reports/reference_stats.json
+      hash: md5
+      md5: 7714b151bf8fbaa140a72710c7783e1d
+      size: 505

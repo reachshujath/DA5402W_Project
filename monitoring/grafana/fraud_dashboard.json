@@ -3,6 +3,7 @@
   "schemaVersion": 39,
   "version": 1,
   "refresh": "10s",
+  "uid": "fraud-mlops",
   "panels": [
     {
       "type": "timeseries",
@@ -36,7 +37,40 @@
         }
       ],
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "type": "timeseries",
+      "title": "API Error Rate",
+      "targets": [
+        {
+          "expr": "rate(fraud_api_errors_total[5m])",
+          "legendFormat": "{{type}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "type": "stat",
+      "title": "Model Loaded",
+      "targets": [{ "expr": "fraud_model_loaded", "legendFormat": "ready" }],
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 16 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Feature Drift Score",
+      "targets": [
+        {
+          "expr": "fraud_feature_drift_score",
+          "legendFormat": "{{feature}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 10, "x": 6, "y": 16 }
+    },
+    {
+      "type": "bargauge",
+      "title": "Drift Flags",
+      "targets": [{ "expr": "fraud_feature_drift_flag", "legendFormat": "{{feature}}" }],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 }
     }
   ]
 }
-

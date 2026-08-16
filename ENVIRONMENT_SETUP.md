@@ -117,7 +117,7 @@ pytest
 Expected:
 
 ```text
-5 passed
+14 passed
 ```
 
 Warnings are acceptable.
@@ -254,10 +254,10 @@ credit-card-fraud-detector
 
 ## 13. Prometheus And Grafana
 
-Prometheus is configured to scrape the API running on the Windows host:
+Prometheus is configured to scrape the API service inside Docker Compose:
 
 ```text
-host.docker.internal:8000
+api:8000
 ```
 
 Open Prometheus targets:
@@ -285,17 +285,7 @@ Username: admin
 Password: admin
 ```
 
-Add Prometheus data source:
-
-```text
-http://prometheus:9090
-```
-
-Import dashboard:
-
-```text
-monitoring/grafana/fraud_dashboard.json
-```
+The Prometheus data source and fraud dashboard are provisioned automatically from `monitoring/grafana/`.
 
 Generate predictions through Swagger to populate the dashboard.
 
@@ -329,17 +319,18 @@ credit_card_fraud_retraining
 Expected successful tasks:
 
 - `validate_dataset`
-- `train_model`
+- `train_and_compare`
+- `evaluate_selection`
+- `record_promotion`
+- `verify_drift_baseline`
 
 ## 15. DVC
 
-DVC metadata is included, but dataset storage is not configured by default.
+DVC is initialized and `creditcard.csv.dvc` versions the dataset metadata. A shared remote is not configured by default.
 
-After installing DVC, initialize it locally:
+After installing DVC, restore from a team remote or place the dataset at the root and reproduce the pipeline:
 
 ```powershell
-dvc init
-dvc add creditcard.csv
 $env:PYTHONPATH="src"
 dvc repro
 ```
@@ -353,10 +344,10 @@ Do not commit the raw dataset directly to Git.
 | `fraud_mlops` cannot be imported | Set `$env:PYTHONPATH="src;."` in the current terminal |
 | Command fails with `$env:PYTHONPATH` syntax error | You are likely in Command Prompt; switch to PowerShell or use `set PYTHONPATH=src;.` |
 | `kafka.vendor.six.moves` error | Ensure `confluent-kafka` is installed and the producer imports `confluent_kafka.Producer` |
-| Prometheus target is `DOWN` | Confirm FastAPI is running on port 8000 and Prometheus is scraping `host.docker.internal:8000` |
+| Prometheus target is `DOWN` | Confirm the Compose `api` service is healthy and Prometheus is scraping `api:8000` |
 | Spark Kafka connector mismatch | Use connector `org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.2` with the current Spark image |
 | Spark cannot write Ivy cache | Include `--conf spark.jars.ivy=/tmp/.ivy2` |
-| Airflow `train_model` fails with missing Python package | Recreate webserver/scheduler with `docker compose up -d --force-recreate airflow-webserver airflow-scheduler` |
+| Airflow training fails with a missing Python package | Rebuild the custom image with `docker compose build airflow-init airflow-webserver airflow-scheduler` |
 
 ## Optional: Export Your Own Exact Environment
 
@@ -379,4 +370,3 @@ For a more exact but less portable export:
 ```powershell
 conda env export > environment-full.yml
 ```
-

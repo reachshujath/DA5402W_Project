@@ -115,11 +115,11 @@ https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud
 | Experiment Tracking | MLflow |
 | API Serving | FastAPI |
 | Containerization | Docker & Docker Compose |
-| Version Control | Git & GitLab |
+| Version Control | Git & GitHub |
 | Data & Model Versioning | DVC |
 | Monitoring | Prometheus |
 | Visualization | Grafana |
-| CI/CD | GitLab CI/CD |
+| CI/CD | GitHub Actions |
 
 ---
 
@@ -203,7 +203,7 @@ Basic data drift detection will also be incorporated to demonstrate model monito
 
 Git will manage source code while DVC will version datasets and trained models.
 
-GitLab CI/CD pipelines will automate:
+GitHub Actions workflows will automate:
 
 - Code validation
 - Unit testing
@@ -278,6 +278,6 @@ Potential future improvements include:
 
 # 12. Conclusion
 
-This project demonstrates an end-to-end production-oriented MLOps pipeline using a real-world fraud detection use case. By integrating tools such as Apache Kafka, Apache Spark, Apache Airflow, MLflow, FastAPI, Docker, Prometheus, Grafana, GitLab CI/CD, and DVC, the project illustrates the complete lifecycle of deploying and managing machine learning systems in production.
+This project demonstrates an end-to-end production-oriented MLOps pipeline using a real-world fraud detection use case. By integrating tools such as Apache Kafka, Apache Spark, Apache Airflow, MLflow, FastAPI, Docker, Prometheus, Grafana, GitHub Actions, and DVC, the project illustrates the complete lifecycle of deploying and managing machine learning systems in production.
 
 The proposed implementation prioritizes operational robustness, reproducibility, automation, and scalability while keeping the underlying machine learning model intentionally simple. This approach aligns with the primary objective of the course: to gain hands-on experience with modern MLOps practices and tooling.

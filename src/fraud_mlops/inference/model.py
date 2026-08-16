@@ -28,8 +28,12 @@ class FraudModelService:
         return {
             "model_name": self.artifact["model_name"],
             "model_version": self.artifact["model_version"],
+            "model_type": self.artifact.get("model_type", "logistic_regression"),
             "threshold": self.artifact["threshold"],
             "feature_count": len(self.artifact["feature_columns"]),
+            "mlflow_run_id": self.artifact.get("mlflow_run_id"),
+            "dataset_fingerprint": self.artifact.get("dataset_fingerprint"),
+            "trained_at": self.artifact.get("trained_at"),
         }
 
     def predict(self, payload: dict) -> dict:
@@ -43,10 +47,11 @@ class FraudModelService:
             "fraud_probability": probability,
             "predicted_class": prediction,
             "threshold": threshold,
+            "model_name": self.artifact["model_name"],
+            "model_type": self.artifact.get("model_type", "logistic_regression"),
             "model_version": self.artifact["model_version"],
         }
 
     def _ensure_loaded(self) -> None:
         if self.artifact is None:
             self.load()
-

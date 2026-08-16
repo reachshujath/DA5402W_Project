@@ -378,7 +378,7 @@ Use explicit rules such as:
 
 - Automate quality checks and build steps.
 
-### GitLab CI/CD Stages
+### GitHub Actions CI/CD Stages
 
 1. Lint
 2. Test

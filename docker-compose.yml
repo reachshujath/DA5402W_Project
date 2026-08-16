@@ -1,28 +1,56 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow
+  environment: &airflow-environment
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+    PYTHONPATH: /opt/airflow/src
+  volumes: &airflow-volumes
+    - ./airflow/dags:/opt/airflow/dags
+    - ./src:/opt/airflow/src
+    - ./creditcard.csv:/opt/airflow/creditcard.csv:ro
+    - ./params.yaml:/opt/airflow/params.yaml:ro
+    - ./models:/opt/airflow/models
+    - ./reports:/opt/airflow/reports
+    - ./data:/opt/airflow/data
+
 services:
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
     environment:
-      - PYTHONPATH=/app/src
+      PYTHONPATH: /app/src
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models
-      - ./reports:/app/reports
+      - ./models:/app/models:ro
+      - ./reports:/app/reports:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
+    healthcheck:
+      test: ["CMD-SHELL", "cub zk-ready localhost 2181 30"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
     environment:
@@ -32,38 +60,69 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      bash -c "for topic in credit-card-transactions fraud-predictions fraud-invalid-transactions; do
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic $$topic --partitions 1 --replication-factor 1;
+      done"
 
   mlflow:
-    image: python:3.11-slim
-    working_dir: /app
-    command: >
-      sh -c "pip install mlflow &&
-      mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root /app/mlruns"
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
     ports:
       - "5000:5000"
     volumes:
       - ./mlruns:/app/mlruns
+      - mlflow-state:/app/state
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   prometheus:
     image: prom/prometheus:v2.52.0
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   grafana:
     image: grafana/grafana:11.0.0
+    depends_on:
+      - prometheus
     ports:
       - "3000:3000"
     volumes:
-      - ./monitoring/grafana:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/fraud_dashboard.json:/var/lib/grafana/dashboards/fraud_dashboard.json:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
 
   spark-master:
-    image: spark:python3-java17
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
     environment:
       HOME: /tmp
       IVY_HOME: /tmp/.ivy2
+      PYTHONPATH: /app/src
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -71,13 +130,16 @@ services:
       - ./:/app
 
   spark-worker:
-    image: spark:python3-java17
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     depends_on:
       - spark-master
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     environment:
       HOME: /tmp
       IVY_HOME: /tmp/.ivy2
+      PYTHONPATH: /app/src
     ports:
       - "8081:8081"
     volumes:
@@ -89,68 +151,38 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   airflow-init:
-    image: apache/airflow:2.9.2
+    <<: *airflow-common
     depends_on:
-      - airflow-postgres
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      PYTHONPATH: /opt/airflow/src
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./src:/opt/airflow/src
-      - ./creditcard.csv:/opt/airflow/creditcard.csv
-      - ./models:/opt/airflow/models
-      - ./reports:/opt/airflow/reports
-      - ./data:/opt/airflow/data
+      airflow-postgres:
+        condition: service_healthy
     command: >
-      bash -c "pip install pandas scikit-learn joblib mlflow prometheus-client &&
-      airflow db migrate &&
+      bash -c "airflow db migrate &&
       airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true"
 
   airflow-webserver:
-    image: apache/airflow:2.9.2
+    <<: *airflow-common
     depends_on:
-      - airflow-init
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      PYTHONPATH: /opt/airflow/src
+      airflow-init:
+        condition: service_completed_successfully
     ports:
       - "8082:8080"
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./src:/opt/airflow/src
-      - ./creditcard.csv:/opt/airflow/creditcard.csv
-      - ./models:/opt/airflow/models
-      - ./reports:/opt/airflow/reports
-      - ./data:/opt/airflow/data
-    command: >
-      bash -c "pip install pandas scikit-learn joblib mlflow prometheus-client &&
-      airflow webserver"
+    command: airflow webserver
 
   airflow-scheduler:
-    image: apache/airflow:2.9.2
+    <<: *airflow-common
     depends_on:
-      - airflow-init
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      PYTHONPATH: /opt/airflow/src
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./src:/opt/airflow/src
-      - ./creditcard.csv:/opt/airflow/creditcard.csv
-      - ./models:/opt/airflow/models
-      - ./reports:/opt/airflow/reports
-      - ./data:/opt/airflow/data
-    command: >
-      bash -c "pip install pandas scikit-learn joblib mlflow prometheus-client &&
-      airflow scheduler"
+      airflow-init:
+        condition: service_completed_successfully
+      mlflow:
+        condition: service_healthy
+    command: airflow scheduler
+
+volumes:
+  mlflow-state:

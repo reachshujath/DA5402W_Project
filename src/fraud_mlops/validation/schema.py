@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import math
 
+import numpy as np
 import pandas as pd
 
 from fraud_mlops.config import FEATURE_COLUMNS, TARGET_COLUMN
@@ -29,6 +31,9 @@ def validate_dataframe(df: pd.DataFrame, require_target: bool = True) -> None:
     if non_numeric:
         raise ValidationError(f"Columns must be numeric: {non_numeric}")
 
+    if not np.isfinite(checked.to_numpy(dtype=float)).all():
+        raise ValidationError("Dataset contains non-finite values.")
+
     if (df["Amount"] < 0).any():
         raise ValidationError("Amount must be non-negative.")
 
@@ -49,9 +54,10 @@ def validate_prediction_payload(payload: Mapping[str, float]) -> dict[str, float
             record[column] = float(payload[column])
         except (TypeError, ValueError) as exc:
             raise ValidationError(f"{column} must be numeric.") from exc
+        if not math.isfinite(record[column]):
+            raise ValidationError(f"{column} must be finite.")
 
     if record["Amount"] < 0:
         raise ValidationError("Amount must be non-negative.")
 
     return record
-

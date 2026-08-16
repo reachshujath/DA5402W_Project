@@ -1,22 +1,24 @@
 stages:
   train:
-    cmd: python -m fraud_mlops.training.train
+    cmd: python -m fraud_mlops.training.train --no-mlflow
     deps:
       - creditcard.csv
+      - params.yaml
       - src/fraud_mlops/config.py
       - src/fraud_mlops/preprocessing.py
       - src/fraud_mlops/training/train.py
       - src/fraud_mlops/validation/schema.py
+    params:
+      - train
     outs:
       - models/fraud_model.joblib
       - data/processed/x_train.csv
+      - data/processed/x_validation.csv
       - data/processed/x_test.csv
       - data/processed/y_train.csv
+      - data/processed/y_validation.csv
       - data/processed/y_test.csv
+      - reports/reference_stats.json
     metrics:
       - reports/metrics.json:
           cache: false
-    plots:
-      - reports/reference_stats.json:
-          cache: false
-

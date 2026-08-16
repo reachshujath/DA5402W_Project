@@ -1,0 +1,6 @@
+FROM spark:python3-java17
+
+USER root
+COPY requirements-spark.txt /tmp/requirements-spark.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-spark.txt
+USER spark

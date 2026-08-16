@@ -1,0 +1,16 @@
+.git
+.github
+.dvc/cache
+.dvc/site-cache
+.dvc/tmp
+.pytest_cache
+.pytest-tmp
+__pycache__
+*.pyc
+creditcard.csv
+creditcard_ci.csv
+data/processed
+mlruns
+tmp
+*.pdf
+*.xlsx
