@@ -29,3 +29,8 @@ htmlcov/
 
 # Local Codex/task metadata
 .agents/
+# Local Conda environment
+MLDL/
+
+# Local secrets/tokens
+etc/

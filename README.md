@@ -2,11 +2,11 @@
 
 An end-to-end, locally reproducible MLOps system that versions the Kaggle credit-card dataset, compares fraud models, tracks experiments, serves predictions, processes Kafka streams with Spark, orchestrates retraining with Airflow, and monitors the deployed service with Prometheus and Grafana.
 
-The dataset has 284,807 transactions, 492 fraud records, and a fraud rate of about 0.173%. Accuracy is therefore not used for model selection; the pipeline emphasizes PR-AUC, recall, precision, F1, ROC-AUC, and explicit classification thresholds.
+The dataset has 284,807 transactions, 492 fraud records, and a fraud rate of about 0.173%. Accuracy is therefore not used for model selection as in case of fraud detection RECALL is better metric for model evaluation; the pipeline emphasizes PR-AUC, recall, precision, F1, ROC-AUC, and explicit classification thresholds.
 
 For a terminal-by-terminal presentation sequence, use [`LIVE_DEMO_INSTRUCTIONS.md`](LIVE_DEMO_INSTRUCTIONS.md).
 
-## Architecture
+## System Architecture
 
 ```mermaid
 flowchart LR
@@ -30,7 +30,7 @@ flowchart LR
     GH --> IMG["GHCR API image"]
 ```
 
-Kafka models transaction arrival, Spark provides schema-aware streaming inference, Airflow makes the training lifecycle explicit and repeatable, MLflow records and registers model decisions, and DVC versions data/pipeline outputs without placing the raw dataset in Git.
+Kafka models transaction arrival, Spark provides schema-aware streaming inference, Airflow makes the training lifecycle explicit and repeatable, MLflow records and registers model decisions, and DVC versions data/pipeline outputs without placing the raw dataset in Git. GitHubActions are used for CI/CD pipeline.
 
 ## Repository Layout
 
@@ -49,6 +49,7 @@ docker-compose.yml           Complete local deployment
 
 Generated data, models, reports, MLflow state, and DVC cache are intentionally excluded from Git.
 
+<!-- Setup and installation Instructions -->
 ## Prerequisites
 
 - Python 3.10 or newer
@@ -57,12 +58,21 @@ Generated data, models, reports, MLflow state, and DVC cache are intentionally e
 - The Kaggle `creditcard.csv` dataset, restored through DVC or downloaded from the [Credit Card Fraud Detection dataset](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)
 
 On the verified Windows environment:
-
-```powershell
-conda activate MLDL
-pip install -r requirements.txt
 $env:PYTHONPATH="src;."
 ```
+ <!-- Setup and installation instructions -->
+
+ step1 : Clone the repository
+git clone https://github.com/reachshujath/DA5402W_Project.git
+cd DA5402W_Project
+
+Step2: Create Conda environment and activate the environment
+conda create --prefix MLDL python=3.12
+conda activate MLDL python=3.12
+
+Step3 : Install the project's dependencies present in requirements.txt
+pip install -r requirements.txt
+
 
 ## Reproduce the Data and Model
 
@@ -73,7 +83,7 @@ dvc pull
 dvc repro
 ```
 
-Without a shared remote, download `creditcard.csv` into the project root once and run:
+if dvc pull failed then Without a shared remote, download `creditcard.csv` into the project root once and run:
 
 ```powershell
 dvc add creditcard.csv
@@ -81,9 +91,9 @@ $env:PYTHONPATH="src"
 dvc repro
 ```
 
-`dvc repro` validates the dataset, compares both candidates, selects a gated winner, and regenerates the processed splits, model artifact, metrics report, and reference drift statistics. Model parameters and gates are controlled by `params.yaml`.
+`dvc repro` will execute the pipeline as per dvc.yaml i.e. validates the dataset, compares both candidates, selects a gated winner, and regenerates the processed splits, model artifact, metrics report, and reference drift statistics. Model parameters and gates are controlled by `params.yaml`.
 
-## Train and Compare Models
+## Train and Compare Models: pre-trained Random Forest model (credit-card-fraud-detector) is already loaded and ready so this step can be skipped
 
 ```powershell
 $env:PYTHONPATH="src"
@@ -122,9 +132,11 @@ Latest verified full-dataset comparison:
 
 ## Run Tests and Quality Checks
 
+
+
 ```powershell
 $env:PYTHONPATH="src;."
-pytest
+pytest or  python -m pytest or python -m pytest -k "not test_airflow_dag" if airflow test case is failing
 ruff check src api tests scripts airflow/dags
 docker compose config --quiet
 ```
@@ -137,8 +149,9 @@ Train the model first, then:
 
 ```powershell
 $env:PYTHONPATH="src;."
-uvicorn api.main:app --host 127.0.0.1 --port 8000
-```
+uvicorn api.main:app --host 127.0.0.1 --port 8000 or try any other port if bind is failing
+
+
 
 | Endpoint | Purpose |
 |---|---|
@@ -149,6 +162,89 @@ uvicorn api.main:app --host 127.0.0.1 --port 8000
 | `GET /metrics` | Prometheus exposition |
 
 Swagger is available at `http://127.0.0.1:8000/docs`. Prediction requests require `Time`, `V1` through `V28`, and `Amount`. The API logs request identifiers, latency, prediction summaries, and model version but does not log raw features.
+
+
+now you can run a manual test for prediction 
+
+# in predict add following in request body
+{
+  "Time": 100.0,
+  "V1": 0.0,
+  "V2": 0.0,
+  "V3": 0.0,
+  "V4": 0.0,
+  "V5": 0.0,
+  "V6": 0.0,
+  "V7": 0.0,
+  "V8": 0.0,
+  "V9": 0.0,
+  "V10": 0.0,
+  "V11": 0.0,
+  "V12": 0.0,
+  "V13": 0.0,
+  "V14": 0.0,
+  "V15": 0.0,
+  "V16": 0.0,
+  "V17": 0.0,
+  "V18": 0.0,
+  "V19": 0.0,
+  "V20": 0.0,
+  "V21": 0.0,
+  "V22": 0.0,
+  "V23": 0.0,
+  "V24": 0.0,
+  "V25": 0.0,
+  "V26": 0.0,
+  "V27": 0.0,
+  "V28": 0.0,
+  "Amount": 15.00
+}
+following negative class response should come
+{
+  "fraud_probability": 0.0005565985964976254,
+  "predicted_class": 0,
+  "threshold": 0.16999999999999998,
+  "model_name": "credit-card-fraud-detector",
+  "model_type": "random_forest",
+  "model_version": "local-2026-08-18T07:48:35.686971+00:00",
+  "request_id": "4f93acfc-e0c8-4e26-bb88-807f974d0950"
+}
+
+for positive class response add following 
+
+{
+  "Time": 406.0,
+  "V1": -2.312226542,
+  "V2": 1.951992011,
+  "V3": -1.609850732,
+  "V4": 3.997905588,
+  "V5": -0.522187865,
+  "V6": -1.426545319,
+  "V7": -2.537387306,
+  "V8": 1.391657248,
+  "V9": -2.770089277,
+  "V10": -2.772272145,
+  "V11": 3.202033207,
+  "V12": -2.899907388,
+  "V13": -0.595221881,
+  "V14": -4.289254078,
+  "V15": 0.38972412,
+  "V16": -1.14074718,
+  "V17": -2.830055675,
+  "V18": -0.016822468,
+  "V19": 0.416955705,
+  "V20": 0.126910559,
+  "V21": 0.517232371,
+  "V22": -0.035049369,
+  "V23": -0.465211076,
+  "V24": 0.320198199,
+  "V25": 0.044519167,
+  "V26": 0.177839798,
+  "V27": 0.261145003,
+  "V28": -0.143275875,
+  "Amount": 0.0
+}
+Fraud should be predicted
 
 ## Start the Complete Docker Stack
 
