@@ -69,11 +69,22 @@ Expected output:
 ok
 ```
 
-## 4. Place The Dataset
+## 4. Restore The Dataset
 
-The dataset is not committed to GitHub because it is large.
+The dataset is not committed directly to GitHub because it is large. The default `gdrive` DVC remote restores the version referenced by `creditcard.csv.dvc`.
 
-Download the Kaggle Credit Card Fraud Detection dataset and place the file at the repository root:
+Configure the included team OAuth client in Git-ignored local DVC configuration, then pull the data:
+
+```powershell
+$oauth = Get-Content "config\dvc-google-oauth-client.json" -Raw | ConvertFrom-Json
+dvc remote modify --local gdrive gdrive_client_id $oauth.installed.client_id
+dvc remote modify --local gdrive gdrive_client_secret $oauth.installed.client_secret
+dvc pull
+```
+
+Google authorization opens on first use. Sign in with an account that has access to `DA5402W_DVC_Remote` and is listed as an OAuth test user.
+
+If shared-remote access is unavailable, download the Kaggle Credit Card Fraud Detection dataset and place the file at the repository root:
 
 ```text
 creditcard.csv
@@ -326,16 +337,20 @@ Expected successful tasks:
 
 ## 15. DVC
 
-DVC is initialized and `creditcard.csv.dvc` versions the dataset metadata. A shared remote is not configured by default.
+DVC is initialized, `creditcard.csv.dvc` versions the dataset metadata, and the default `gdrive` remote points to the shared `DA5402W_DVC_Remote` Google Drive folder.
 
-After installing DVC, restore from a team remote or place the dataset at the root and reproduce the pipeline:
+Install the dependencies and configure the included team Desktop OAuth client only in Git-ignored local DVC configuration, then restore and reproduce the pipeline:
 
 ```powershell
+$oauth = Get-Content "config\dvc-google-oauth-client.json" -Raw | ConvertFrom-Json
+dvc remote modify --local gdrive gdrive_client_id $oauth.installed.client_id
+dvc remote modify --local gdrive gdrive_client_secret $oauth.installed.client_secret
+dvc pull
 $env:PYTHONPATH="src"
 dvc repro
 ```
 
-Do not commit the raw dataset directly to Git.
+Each team member must be granted access to the Drive folder and listed as an OAuth test user. The shared OAuth client JSON contains no user token; do not commit `.dvc/config.local`, generated `pydrive2fs` user credentials, or the raw dataset directly to Git.
 
 ## Troubleshooting
 

@@ -45,6 +45,7 @@ Confirm the following before presenting:
 - Docker Desktop is installed and its Linux engine is running.
 - Conda or Miniconda is installed.
 - `creditcard.csv` exists at the repository root.
+- The presenting Google account has access to `DA5402W_DVC_Remote` and is listed as an OAuth test user.
 - Ports `3000`, `5000`, `8000`, `8080`, `8082`, `9090`, and `9092` are available.
 - The repository is connected to GitHub.
 
@@ -117,18 +118,33 @@ All checks passed!
 
 ## Step 3 — Demonstrate DVC Versioning
 
-Confirm the tracked dataset metadata:
+Configure the repository's team OAuth client in Git-ignored local DVC configuration:
+
+```powershell
+$oauth = Get-Content "config\dvc-google-oauth-client.json" -Raw | ConvertFrom-Json
+dvc remote modify --local gdrive gdrive_client_id $oauth.installed.client_id
+dvc remote modify --local gdrive gdrive_client_secret $oauth.installed.client_secret
+```
+
+The first cloud command on a new machine opens Google authorization. Sign in with an account that has both Drive-folder access and OAuth test-user access.
+
+Confirm the tracked dataset metadata and shared remote:
 
 ```powershell
 Get-Content creditcard.csv.dvc
+dvc remote list
 dvc dag
 dvc status
+dvc status --cloud
+dvc pull
 ```
 
 Expected status:
 
 ```text
 Data and pipelines are up to date.
+Cache and remote 'gdrive' are in sync.
+Everything is up to date.
 ```
 
 To reproduce changed or missing outputs:
@@ -142,6 +158,8 @@ Explain that:
 
 - `creditcard.csv` is excluded from Git.
 - `creditcard.csv.dvc` stores the dataset hash and size.
+- `.dvc/config` points to the shared Google Drive remote without storing a user authorization token.
+- `config/dvc-google-oauth-client.json` identifies the assignment's OAuth application; every user authorizes independently.
 - `dvc.yaml` defines the training pipeline.
 - `dvc.lock` records the exact dependency, parameter, metric, and output state.
 - `params.yaml` controls model settings and promotion gates.
@@ -496,7 +514,8 @@ docker compose down -v
 |---|---|
 | Docker command cannot connect | Start Docker Desktop and wait for the Linux engine |
 | Python cannot import `fraud_mlops` | `$env:PYTHONPATH="src;."` |
-| Dataset not found | Place `creditcard.csv` at the repository root or run `dvc pull` with a configured remote |
+| Dataset not found | Configure the included OAuth client, confirm Drive-folder and OAuth test-user access, then run `dvc pull` |
+| Google says the DVC app is blocked | Confirm the `gdrive_client_id` and `gdrive_client_secret` from `config\dvc-google-oauth-client.json` were added with `dvc remote modify --local` |
 | API reports degraded health | Run training and then `docker compose restart api` |
 | MLflow logging fails | Set `$env:MLFLOW_TRACKING_URI="http://localhost:5000"` and check `docker compose logs mlflow` |
 | Spark shows no transactions | Start Spark first, then run the Kafka producer again |
@@ -513,6 +532,8 @@ $env:PYTHONPATH="src;."
 pytest
 ruff check src api tests scripts airflow/dags
 dvc status
+dvc remote list
+dvc status --cloud
 docker compose up --build -d mlflow
 $env:MLFLOW_TRACKING_URI="http://localhost:5000"
 python -m fraud_mlops.training.train

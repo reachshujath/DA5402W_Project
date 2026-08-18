@@ -12,5 +12,6 @@ creditcard_ci.csv
 data/processed
 mlruns
 tmp
+config/dvc-google-oauth-client.json
 *.pdf
 *.xlsx
