@@ -55,6 +55,7 @@ def main() -> None:
     if not Path(args.model_path).exists():
         raise FileNotFoundError(f"Model artifact not found: {args.model_path}")
     spark = SparkSession.builder.appName("credit-card-fraud-stream").config("spark.sql.shuffle.partitions", "2").getOrCreate()
+    spark.sparkContext.setLogLevel("WARN")
     raw = (
         spark.readStream.format("kafka")
         .option("kafka.bootstrap.servers", args.bootstrap_servers)
@@ -101,7 +102,15 @@ def main() -> None:
         .option("checkpointLocation", f"{args.checkpoint}/invalid")
         .outputMode("append")
         .start(),
-        predicted.writeStream.format("console")
+        predicted.selectExpr(
+            "CAST(Time AS BIGINT) AS Time",
+            "ROUND(Amount, 2) AS Amount",
+            "ROUND(fraud_probability, 6) AS fraud_probability",
+            "predicted_class",
+            "SUBSTRING(model_version, 1, 16) AS model_version",
+            "DATE_FORMAT(processed_at, 'yyyy-MM-dd HH:mm:ss') AS processed_at",
+        )
+        .writeStream.format("console")
         .option("truncate", "false")
         .option("checkpointLocation", f"{args.checkpoint}/console")
         .outputMode("append")
