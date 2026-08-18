@@ -11,7 +11,7 @@ This file maps the course requirements to concrete repository evidence after com
 | Two model comparison | Balanced Logistic Regression and Random Forest evaluated with validation-only threshold selection |
 | Proper metrics | Precision, recall, F1, ROC-AUC, PR-AUC, confusion matrices, and explicit promotion gates |
 | MLflow | Candidate runs, parameters, metrics, evaluation artifacts, model registry, and `champion` alias |
-| Dataset/model versioning | Initialized `.dvc/`, `creditcard.csv.dvc`, parameterized `dvc.yaml`, and generated `dvc.lock` |
+| Dataset/model versioning | Initialized `.dvc/`, `creditcard.csv.dvc`, parameterized `dvc.yaml`, generated `dvc.lock`, and verified the shared Google Drive remote |
 | Deployment | FastAPI endpoints, traceable prediction response, purpose-built API image, complete Compose deployment |
 | Monitoring/logging | Structured logs, Prometheus operational/model/drift metrics, provisioned Grafana dashboard |
 | CI/CD | GitHub Actions lint, tests/coverage, synthetic training, DVC validation, image build, and GHCR publication |
@@ -24,6 +24,8 @@ $env:PYTHONPATH="src;."
 pytest
 ruff check src api tests scripts airflow/dags
 dvc dag
+dvc remote list
+dvc status --cloud
 dvc repro
 docker compose config --quiet
 ```

@@ -1,3 +1,6 @@
 [core]
     analytics = false
     site_cache_dir = .dvc/site-cache
+    remote = gdrive
+['remote "gdrive"']
+    url = gdrive://1BAzHq3MKIYEx8TOlK6maOTfFo-W3vI1F

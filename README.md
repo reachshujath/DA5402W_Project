@@ -39,6 +39,7 @@ api/                         FastAPI service
 airflow/dags/                Retraining and promotion DAG
 monitoring/                  Prometheus and provisioned Grafana configuration
 scripts/                     CI/demo data utilities
+config/                      Shared Desktop OAuth client for the team DVC remote
 src/fraud_mlops/             Validation, training, inference, drift, and streaming code
 tests/                       Unit and API tests
 .github/workflows/           GitHub Actions CI/CD
@@ -66,14 +67,19 @@ $env:PYTHONPATH="src;."
 
 ## Reproduce the Data and Model
 
-The repository contains `creditcard.csv.dvc`, `.dvc/config`, `dvc.yaml`, and `dvc.lock`. If a DVC remote has been configured for your team:
+The repository contains `creditcard.csv.dvc`, `.dvc/config`, `dvc.yaml`, and `dvc.lock`. The default `gdrive` remote points to the shared `DA5402W_DVC_Remote` Google Drive folder. Install the dependencies and configure the included team Desktop OAuth client locally:
 
 ```powershell
+$oauth = Get-Content "config\dvc-google-oauth-client.json" -Raw | ConvertFrom-Json
+dvc remote modify --local gdrive gdrive_client_id $oauth.installed.client_id
+dvc remote modify --local gdrive gdrive_client_secret $oauth.installed.client_secret
 dvc pull
 dvc repro
 ```
 
-Without a shared remote, download `creditcard.csv` into the project root once and run:
+The shared OAuth client JSON identifies the assignment's Google application but contains no user authorization token. Never commit `.dvc/config.local` or the generated `pydrive2fs` user credential cache. Google Drive folder access and OAuth test-user access must be granted to each team member's Google account.
+
+If shared-remote access is unavailable, download `creditcard.csv` into the project root once and run:
 
 ```powershell
 dvc add creditcard.csv
