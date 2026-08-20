@@ -25,7 +25,7 @@ services:
     environment:
       PYTHONPATH: /app/src
     ports:
-      - "8000:8000"
+      - "8002:8000"
     volumes:
       - ./models:/app/models:ro
       - ./reports:/app/reports:ro
